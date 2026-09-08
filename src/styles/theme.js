@@ -1,6 +1,7 @@
 export const theme = {
   colors: {
     primary: "#02af69",
+    primaryLight: "#eaf8f2",
     naver: "#03c75a",
     kakao: "#fee500",
     kakaoText: "#3c1e1e",
