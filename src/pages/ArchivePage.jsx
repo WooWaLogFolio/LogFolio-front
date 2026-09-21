@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import AppHeader from "../components/layout/AppHeader";
 import QuickRecordModal from "../components/archive/QuickRecordModal";
@@ -138,7 +139,7 @@ const ProjectGrid = styled.section`
   }
 `;
 
-const ProjectCard = styled.article`
+const ProjectCard = styled.button`
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -147,6 +148,13 @@ const ProjectCard = styled.article`
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: 12px;
   background: white;
+  text-align: left;
+  transition: border-color 0.15s, box-shadow 0.15s;
+
+  &:hover {
+    border-color: ${({ theme }) => theme.colors.primary};
+    box-shadow: 0 4px 14px rgba(2, 175, 105, 0.08);
+  }
 `;
 
 const CardTitleRow = styled.div`
@@ -344,7 +352,7 @@ const EmptyState = styled.main`
   }
 `;
 
-function ProjectCards({ projects, filter }) {
+function ProjectCards({ projects, filter, onOpenProject }) {
   const visible = filter === "전체"
     ? projects
     : projects.filter((project) => project.status === filter);
@@ -352,7 +360,7 @@ function ProjectCards({ projects, filter }) {
   return (
     <ProjectGrid aria-label="프로젝트 목록">
       {visible.map((project) => (
-        <ProjectCard key={project.id}>
+        <ProjectCard key={project.id} type="button" onClick={() => onOpenProject(project.id)}>
           <div>
             <CardTitleRow>
               <CardTitle>{project.title}</CardTitle>
@@ -381,6 +389,7 @@ function ProjectCards({ projects, filter }) {
 }
 
 export default function ArchivePage() {
+  const navigate = useNavigate();
   const projects = initialProjects;
   const [filter, setFilter] = useState("전체");
   const [records, setRecords] = useState(initialRecords);
@@ -492,7 +501,7 @@ export default function ArchivePage() {
           </FilterButtons>
           <Count>{filter === "전체" ? projects.length : projects.filter((p) => p.status === filter).length}개 프로젝트</Count>
         </FilterRow>
-        <ProjectCards projects={projects} filter={filter} />
+        <ProjectCards projects={projects} filter={filter} onOpenProject={(id) => navigate(`/archive/${id}`)} />
 
         <RecentSection>
           <SectionHeader>
