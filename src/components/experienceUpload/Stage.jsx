@@ -29,8 +29,8 @@ const StepNumber = styled.span`
   width: 22px;
   height: 22px;
   border-radius: 11px;
-  background: ${({ $active, theme }) => ($active ? theme.colors.primary : theme.colors.border)};
-  color: ${({ $active, theme }) => ($active ? theme.colors.white : theme.colors.textGray)};
+  background: ${({ $done, theme }) => ($done ? theme.colors.primary : theme.colors.border)};
+  color: ${({ $done, theme }) => ($done ? theme.colors.white : theme.colors.textGray)};
   font-size: 12px;
   font-weight: 700;
 `;
@@ -39,7 +39,8 @@ const StepLabel = styled.span`
   flex-shrink: 0;
   font-size: 14px;
   font-weight: ${({ $active }) => ($active ? 600 : 400)};
-  color: ${({ $active, theme }) => ($active ? theme.colors.textDark : theme.colors.textGray)};
+  color: ${({ $active, $completed, theme }) =>
+    $active || $completed ? theme.colors.textDark : theme.colors.textGray};
 `;
 
 const StepLine = styled.span`
@@ -47,20 +48,23 @@ const StepLine = styled.span`
   height: 1px;
   min-width: 16px;
   margin: 0 8px;
-  background: ${({ theme }) => theme.colors.border};
+  background: ${({ $completed, theme }) => ($completed ? theme.colors.primary : theme.colors.border)};
 `;
 
 export default function Stage({ currentStep = 1 }) {
   return (
     <StageBar aria-label="진행 단계">
       {steps.map(({ step, label }, index) => {
-        const active = step <= currentStep;
+        const completed = step < currentStep;
+        const active = step === currentStep;
         const withLine = index < steps.length - 1;
         return (
           <StepItem key={step} $withLine={withLine}>
-            <StepNumber $active={active}>{step}</StepNumber>
-            <StepLabel $active={active}>{label}</StepLabel>
-            {withLine && <StepLine />}
+            <StepNumber $done={completed || active}>{completed ? "✓" : step}</StepNumber>
+            <StepLabel $active={active} $completed={completed}>
+              {label}
+            </StepLabel>
+            {withLine && <StepLine $completed={completed} />}
           </StepItem>
         );
       })}

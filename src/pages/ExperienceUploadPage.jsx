@@ -3,6 +3,8 @@ import styled from "styled-components";
 import AppHeader from "../components/layout/AppHeader";
 import Stage from "../components/experienceUpload/Stage";
 import ProjectInfoForm from "../components/experienceUpload/ProjectInfoForm";
+import MaterialUploadForm from "../components/experienceUpload/MaterialUploadForm";
+import LoadingStage from "../components/experienceUpload/LoadingStage";
 
 const Page = styled.div`
   min-height: 100vh;
@@ -32,11 +34,30 @@ const ComingSoon = styled.div`
 
 export default function ExperienceUploadPage() {
   const [currentStep, setCurrentStep] = useState(1);
+  const [uploadPhase, setUploadPhase] = useState("form");
   const [, setProjectInfo] = useState(null);
+  const [, setMaterials] = useState([]);
 
   const handleProjectInfoNext = (data) => {
     setProjectInfo(data);
     setCurrentStep(2);
+    setUploadPhase("form");
+  };
+
+  const handleMaterialsNext = (files) => {
+    setMaterials(files);
+    setUploadPhase("loading");
+  };
+
+  const handleSkipMaterials = () => {
+    setMaterials([]);
+    setCurrentStep(3);
+    setUploadPhase("form");
+  };
+
+  const handleLoadingComplete = () => {
+    setCurrentStep(3);
+    setUploadPhase("form");
   };
 
   return (
@@ -46,8 +67,15 @@ export default function ExperienceUploadPage() {
         <Stage currentStep={currentStep} />
 
         {currentStep === 1 && <ProjectInfoForm onNext={handleProjectInfoNext} />}
-        {currentStep === 2 && (
-          <ComingSoon>자료 추가 단계는 준비 중입니다.</ComingSoon>
+        {currentStep === 2 && uploadPhase === "form" && (
+          <MaterialUploadForm
+            onPrev={() => setCurrentStep(1)}
+            onNext={handleMaterialsNext}
+            onSkip={handleSkipMaterials}
+          />
+        )}
+        {currentStep === 2 && uploadPhase === "loading" && (
+          <LoadingStage onComplete={handleLoadingComplete} />
         )}
         {currentStep === 3 && (
           <ComingSoon>AI 해석 확인 단계는 준비 중입니다.</ComingSoon>

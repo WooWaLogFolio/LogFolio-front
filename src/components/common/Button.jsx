@@ -68,6 +68,17 @@ export const TagButton = styled.button`
   font-weight: ${({ $active }) => ($active ? 600 : 400)};
 `;
 
+export const SecondaryButton = styled.button`
+  height: 48px;
+  padding: 0 20px;
+  border: 1px solid ${({ theme }) => theme.colors.border};
+  border-radius: 8px;
+  background: ${({ theme }) => theme.colors.white};
+  color: ${({ theme }) => theme.colors.textDark};
+  font-size: 15px;
+  font-weight: 600;
+`;
+
 export const NextButton = styled.button`
   width: 100%;
   height: 48px;
