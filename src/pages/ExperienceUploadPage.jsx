@@ -5,6 +5,8 @@ import Stage from "../components/experienceUpload/Stage";
 import ProjectInfoForm from "../components/experienceUpload/ProjectInfoForm";
 import MaterialUploadForm from "../components/experienceUpload/MaterialUploadForm";
 import LoadingStage from "../components/experienceUpload/LoadingStage";
+import AiReviewStage from "../components/experienceUpload/AiReviewStage";
+import ExperienceCandidatesStage from "../components/experienceUpload/ExperienceCandidatesStage";
 
 const Page = styled.div`
   min-height: 100vh;
@@ -23,13 +25,6 @@ const Main = styled.main`
   @media (max-width: 720px) {
     padding: 12px 20px 60px;
   }
-`;
-
-const ComingSoon = styled.div`
-  padding: 80px 0;
-  text-align: center;
-  color: ${({ theme }) => theme.colors.textGray};
-  font-size: 16px;
 `;
 
 export default function ExperienceUploadPage() {
@@ -78,11 +73,9 @@ export default function ExperienceUploadPage() {
           <LoadingStage onComplete={handleLoadingComplete} />
         )}
         {currentStep === 3 && (
-          <ComingSoon>AI 해석 확인 단계는 준비 중입니다.</ComingSoon>
+          <AiReviewStage onComplete={() => setCurrentStep(4)} />
         )}
-        {currentStep === 4 && (
-          <ComingSoon>경험 후보 단계는 준비 중입니다.</ComingSoon>
-        )}
+        {currentStep === 4 && <ExperienceCandidatesStage />}
       </Main>
     </Page>
   );
