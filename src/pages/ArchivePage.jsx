@@ -352,6 +352,7 @@ const EmptyState = styled.main`
   }
 `;
 
+
 function ProjectCards({ projects, filter, onOpenProject }) {
   const visible = filter === "전체"
     ? projects
@@ -379,7 +380,7 @@ function ProjectCards({ projects, filter, onOpenProject }) {
         </ProjectCard>
       ))}
       {filter === "전체" && (
-        <AddProjectCard type="button">
+        <AddProjectCard type="button" onClick={onAddProject}>
           <img src={plusGrayIcon} alt="" />
           새 프로젝트 추가
         </AddProjectCard>
@@ -438,7 +439,7 @@ export default function ArchivePage() {
           <img src={emptyDocumentIcon} alt="" />
           <h1>첫 프로젝트를 시작해볼게요</h1>
           <p>프로젝트 자료를 올리면 LogFolio가<br />폴더와 경험 카드를 자동으로 만들어 드려요.</p>
-          <button type="button">
+          <button type="button" onClick={() => navigate("/experience-upload")}>
             <img src={plusWhiteIcon} alt="" />
             새 프로젝트 추가
           </button>
@@ -479,7 +480,7 @@ export default function ArchivePage() {
               <img src={clockIcon} alt="" />
               30초 기록
             </TopButton>
-            <TopButton type="button" $primary>
+            <TopButton type="button" $primary onClick={() => navigate("/experience-upload")}>
               <img src={plusWhiteSmallIcon} alt="" />
               새 프로젝트
             </TopButton>
@@ -501,7 +502,11 @@ export default function ArchivePage() {
           </FilterButtons>
           <Count>{filter === "전체" ? projects.length : projects.filter((p) => p.status === filter).length}개 프로젝트</Count>
         </FilterRow>
-        <ProjectCards projects={projects} filter={filter} onOpenProject={(id) => navigate(`/archive/${id}`)} />
+        <ProjectCards
+          projects={projects}
+          filter={filter}
+          onAddProject={() => navigate("/experience-upload")}
+        />
 
         <RecentSection>
           <SectionHeader>

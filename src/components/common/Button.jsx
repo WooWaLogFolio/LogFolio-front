@@ -39,3 +39,57 @@ export const TextLinkButton = styled.button`
   font-size: 12px;
   color: ${({ theme }) => theme.colors.textGray};
 `;
+
+export const ToggleButton = styled.button`
+  height: 48px;
+  padding: 0 24px;
+  border: 1px solid
+    ${({ $active, theme }) => ($active ? theme.colors.primary : theme.colors.border)};
+  border-radius: 8px;
+  background: ${({ $active, theme }) =>
+    $active ? theme.colors.primaryLight : theme.colors.white};
+  color: ${({ $active, theme }) =>
+    $active ? theme.colors.primary : theme.colors.textDark};
+  font-size: 16px;
+  font-weight: ${({ $active }) => ($active ? 600 : 400)};
+`;
+
+export const TagButton = styled.button`
+  height: 40px;
+  padding: 0 16px;
+  border: 1px solid
+    ${({ $active, theme }) => ($active ? theme.colors.primary : theme.colors.border)};
+  border-radius: 100px;
+  background: ${({ $active, theme }) =>
+    $active ? theme.colors.primaryLight : theme.colors.white};
+  color: ${({ $active, theme }) =>
+    $active ? theme.colors.primary : theme.colors.textDark};
+  font-size: 14px;
+  font-weight: ${({ $active }) => ($active ? 600 : 400)};
+`;
+
+export const SecondaryButton = styled.button`
+  height: 48px;
+  padding: 0 20px;
+  border: 1px solid ${({ theme }) => theme.colors.border};
+  border-radius: 8px;
+  background: ${({ theme }) => theme.colors.white};
+  color: ${({ theme }) => theme.colors.textDark};
+  font-size: 15px;
+  font-weight: 600;
+`;
+
+export const NextButton = styled.button`
+  width: 100%;
+  height: 48px;
+  border-radius: 8px;
+  background: ${({ disabled, theme }) =>
+    disabled ? theme.colors.border : theme.colors.primary};
+  color: ${({ disabled, theme }) => (disabled ? theme.colors.textGray : theme.colors.white)};
+  font-size: 15px;
+  font-weight: 600;
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+`;

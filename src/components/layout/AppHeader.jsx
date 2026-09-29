@@ -47,6 +47,23 @@ const Navigation = styled.nav`
   gap: 2px;
 `;
 
+const PageContext = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 54px;
+`;
+
+const PageDivider = styled.span`
+  color: ${({ theme }) => theme.colors.border};
+  font-size: 14px;
+`;
+
+const PageTitle = styled.span`
+  color: ${({ theme }) => theme.colors.textGray};
+  font-size: 16px;
+`;
+
 const NavButton = styled.button`
   padding: 6px 14px;
   border-radius: 8px;
@@ -72,7 +89,7 @@ const Avatar = styled.div`
   font-weight: 700;
 `;
 
-export default function AppHeader({ onArchiveClick }) {
+export default function AppHeader({ onArchiveClick, pageTitle }) {
   return (
     <Header>
       <Inner>
@@ -81,12 +98,19 @@ export default function AppHeader({ onArchiveClick }) {
             <img src={logo} alt="" />
             LogFolio
           </Brand>
-          <Navigation aria-label="주요 메뉴">
-            <NavButton type="button" $active onClick={onArchiveClick}>
-              경험 아카이브
-            </NavButton>
-            <NavButton type="button">설정</NavButton>
-          </Navigation>
+          {pageTitle ? (
+            <PageContext>
+              <PageDivider aria-hidden="true">|</PageDivider>
+              <PageTitle>{pageTitle}</PageTitle>
+            </PageContext>
+          ) : (
+            <Navigation aria-label="주요 메뉴">
+              <NavButton type="button" $active onClick={onArchiveClick}>
+                경험 아카이브
+              </NavButton>
+              <NavButton type="button">설정</NavButton>
+            </Navigation>
+          )}
         </Left>
         <Avatar aria-label="김 님 프로필">김</Avatar>
       </Inner>

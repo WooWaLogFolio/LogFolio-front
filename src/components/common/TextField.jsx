@@ -13,6 +13,11 @@ const Label = styled.label`
   color: ${({ theme }) => theme.colors.textLabel};
 `;
 
+const RequiredMark = styled.span`
+  margin-left: 2px;
+  color: ${({ theme }) => theme.colors.primary};
+`;
+
 const Input = styled.input`
   width: 100%;
   height: 45px;
@@ -32,10 +37,13 @@ const Input = styled.input`
   }
 `;
 
-export default function TextField({ id, label, ...inputProps }) {
+export default function TextField({ id, label, requiredMark, ...inputProps }) {
   return (
     <FieldWrapper>
-      <Label htmlFor={id}>{label}</Label>
+      <Label htmlFor={id}>
+        {label}
+        {requiredMark && <RequiredMark aria-hidden="true">*</RequiredMark>}
+      </Label>
       <Input id={id} name={id} {...inputProps} />
     </FieldWrapper>
   );
