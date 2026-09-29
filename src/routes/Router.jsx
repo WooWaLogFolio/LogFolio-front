@@ -4,6 +4,8 @@ import SignupPage from "../pages/SignupPage";
 import OnboardingPage from "../pages/OnboardingPage";
 import ArchivePage from "../pages/ArchivePage";
 import ExperienceUploadPage from "../pages/ExperienceUploadPage";
+import ExperienceDetailPage from "../pages/ExperienceDetailPage";
+import ExperienceFolderPage from "../pages/ExperienceFolderPage";
 
 export default function Router() {
   return (
@@ -15,6 +17,8 @@ export default function Router() {
         <Route path="/onboarding" element={<OnboardingPage />} />
         <Route path="/archive" element={<ArchivePage />} />
         <Route path="/experience-upload" element={<ExperienceUploadPage />} />
+        <Route path="/archive/:projectId" element={<ExperienceFolderPage />} />
+        <Route path="/archive/:projectId/experiences/:experienceId" element={<ExperienceDetailPage />} />
       </Routes>
     </BrowserRouter>
   );
