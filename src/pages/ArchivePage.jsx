@@ -139,7 +139,7 @@ const ProjectGrid = styled.section`
   }
 `;
 
-const ProjectCard = styled.article`
+const ProjectCard = styled.button`
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -148,6 +148,13 @@ const ProjectCard = styled.article`
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: 12px;
   background: white;
+  text-align: left;
+  transition: border-color 0.15s, box-shadow 0.15s;
+
+  &:hover {
+    border-color: ${({ theme }) => theme.colors.primary};
+    box-shadow: 0 4px 14px rgba(2, 175, 105, 0.08);
+  }
 `;
 
 const CardTitleRow = styled.div`
@@ -345,7 +352,8 @@ const EmptyState = styled.main`
   }
 `;
 
-function ProjectCards({ projects, filter, onAddProject }) {
+
+function ProjectCards({ projects, filter, onOpenProject }) {
   const visible = filter === "전체"
     ? projects
     : projects.filter((project) => project.status === filter);
@@ -353,7 +361,7 @@ function ProjectCards({ projects, filter, onAddProject }) {
   return (
     <ProjectGrid aria-label="프로젝트 목록">
       {visible.map((project) => (
-        <ProjectCard key={project.id}>
+        <ProjectCard key={project.id} type="button" onClick={() => onOpenProject(project.id)}>
           <div>
             <CardTitleRow>
               <CardTitle>{project.title}</CardTitle>
