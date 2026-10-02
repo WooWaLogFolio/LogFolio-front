@@ -137,7 +137,7 @@ export default function OnboardingModal() {
   const isLastStep = stepIndex === steps.length - 1;
   const step = steps[stepIndex];
 
-  const goToApp = () => navigate("/archive");
+  const goToApp = () => navigate("/experience-upload");
 
   const handleNext = () => {
     if (isLastStep) {

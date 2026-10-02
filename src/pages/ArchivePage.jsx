@@ -353,7 +353,7 @@ const EmptyState = styled.main`
 `;
 
 
-function ProjectCards({ projects, filter, onOpenProject }) {
+function ProjectCards({ projects, filter, onOpenProject, onAddProject }) {
   const visible = filter === "전체"
     ? projects
     : projects.filter((project) => project.status === filter);
@@ -505,6 +505,7 @@ export default function ArchivePage() {
         <ProjectCards
           projects={projects}
           filter={filter}
+          onOpenProject={(id) => navigate(`/archive/${id}`)}
           onAddProject={() => navigate("/experience-upload")}
         />
 
