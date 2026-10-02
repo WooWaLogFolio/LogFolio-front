@@ -4,6 +4,7 @@ import logo from "../../assets/images/logo.svg";
 import iconNaver from "../../assets/images/icon-naver.svg";
 import iconKakao from "../../assets/images/icon-kakao.svg";
 import { SocialButton } from "../common/Button";
+import { startSocialLogin } from "../../apis/authApi";
 
 const Wrapper = styled.div`
   display: flex;
@@ -121,6 +122,7 @@ export default function AuthLayout({
   bottomText,
   bottomLinkText,
   bottomLinkTo,
+  showSocialActions = true,
 }) {
   return (
     <Wrapper>
@@ -135,22 +137,36 @@ export default function AuthLayout({
 
         <FormArea>{children}</FormArea>
 
-        <DividerRow>
-          <DividerLine />
-          <span>또는 소셜 계정으로</span>
-          <DividerLine />
-        </DividerRow>
+        {showSocialActions && (
+          <>
+            <DividerRow>
+              <DividerLine />
+              <span>또는 소셜 계정으로</span>
+              <DividerLine />
+            </DividerRow>
 
-        <SocialRow>
-          <SocialButton type="button" $bg="#03c75a" $color="#ffffff">
-            <img src={iconNaver} alt="" />
-            네이버로 {socialActionLabel}
-          </SocialButton>
-          <SocialButton type="button" $bg="#fee500" $color="#3c1e1e">
-            <img src={iconKakao} alt="" />
-            카카오로 {socialActionLabel}
-          </SocialButton>
-        </SocialRow>
+            <SocialRow>
+              <SocialButton
+                type="button"
+                $bg="#03c75a"
+                $color="#ffffff"
+                onClick={() => startSocialLogin("naver")}
+              >
+                <img src={iconNaver} alt="" />
+                네이버로 {socialActionLabel}
+              </SocialButton>
+              <SocialButton
+                type="button"
+                $bg="#fee500"
+                $color="#3c1e1e"
+                onClick={() => startSocialLogin("kakao")}
+              >
+                <img src={iconKakao} alt="" />
+                카카오로 {socialActionLabel}
+              </SocialButton>
+            </SocialRow>
+          </>
+        )}
 
         <BottomText>
           {bottomText} <Link to={bottomLinkTo}>{bottomLinkText}</Link>
