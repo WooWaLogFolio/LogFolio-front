@@ -105,15 +105,6 @@ const BottomText = styled.p`
   }
 `;
 
-const Footer = styled.div`
-  margin-top: 40px;
-  padding-top: 28px;
-  font-size: 12px;
-  line-height: 19.2px;
-  text-align: center;
-  color: ${({ theme }) => theme.colors.textFooter};
-`;
-
 export default function AuthLayout({
   title,
   subtitle,
@@ -172,10 +163,6 @@ export default function AuthLayout({
           {bottomText} <Link to={bottomLinkTo}>{bottomLinkText}</Link>
         </BottomText>
 
-        <Footer>
-          <p>Footer 영역</p>
-          <p>LogFolio@gmail.com</p>
-        </Footer>
       </Container>
     </Wrapper>
   );
