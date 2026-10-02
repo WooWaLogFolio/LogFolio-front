@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { login } from "../apis/authApi";
+import { getMe, login } from "../apis/authApi";
 
 export function useLogin() {
   const navigate = useNavigate();
@@ -19,9 +19,16 @@ export function useLogin() {
     setLoading(true);
     try {
       await login(form);
-      navigate("/onboarding");
+      const { data: user } = await getMe();
+      navigate(user.onboardingCompletedAt ? "/archive" : "/onboarding", {
+        replace: true,
+      });
     } catch (err) {
-      setError(err.response?.data?.message ?? "이메일 또는 비밀번호를 확인해주세요.");
+      setError(
+        err.response?.data?.message ??
+          err.response?.data?.detail ??
+          "이메일 또는 비밀번호를 확인해주세요.",
+      );
     } finally {
       setLoading(false);
     }

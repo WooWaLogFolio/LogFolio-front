@@ -29,10 +29,16 @@ export function useSignup() {
 
     setLoading(true);
     try {
-      await signup(form);
-      navigate("/onboarding");
+      const { data: user } = await signup(form);
+      navigate(user.onboardingCompletedAt ? "/archive" : "/onboarding", {
+        replace: true,
+      });
     } catch (err) {
-      setError(err.response?.data?.message ?? "회원가입에 실패했습니다.");
+      setError(
+        err.response?.data?.message ??
+          err.response?.data?.detail ??
+          "회원가입에 실패했습니다.",
+      );
     } finally {
       setLoading(false);
     }
