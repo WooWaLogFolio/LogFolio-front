@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import styled, { keyframes } from "styled-components";
 import spinnerIcon from "../../assets/icons/experienceUpload/spinner.svg";
+import { getAnalysisRun } from "../../apis/analysisApi";
+
+const POLLING_INTERVAL = 3000;
 
 const spin = keyframes`
   from { transform: rotate(0deg); }
@@ -74,15 +77,33 @@ const Caption = styled.p`
   text-align: center;
 `;
 
-export default function LoadingStage({ onComplete }) {
+export default function LoadingStage({ runId, onComplete, onError }) {
   const [progress, setProgress] = useState(0);
+  const [ready, setReady] = useState(false);
 
+  // 진행률
   useEffect(() => {
     const timer = setInterval(() => {
-      setProgress((prev) => Math.min(prev + Math.random() * 12 + 4, 100));
+      setProgress((prev) =>
+        ready ? 100 : Math.min(prev + Math.random() * 12 + 4, 90),
+      );
     }, 250);
     return () => clearInterval(timer);
-  }, []);
+  }, [ready]);
+
+  useEffect(() => {
+    if (!runId || ready) return;
+    const timer = setInterval(async () => {
+      try {
+        const { data } = await getAnalysisRun(runId);
+        if (data.status === "REVIEW_READY") setReady(true);
+        if (data.status === "FAILED") onError?.();
+      } catch {
+        onError?.();
+      }
+    }, POLLING_INTERVAL);
+    return () => clearInterval(timer);
+  }, [runId, ready, onError]);
 
   useEffect(() => {
     if (progress < 100) return;
