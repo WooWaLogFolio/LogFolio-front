@@ -172,10 +172,8 @@ export default function AuthLayout({
           {bottomText} <Link to={bottomLinkTo}>{bottomLinkText}</Link>
         </BottomText>
 
-        <Footer>
-          <p>Footer 영역</p>
-          <p>LogFolio@gmail.com</p>
-        </Footer>
+        <Footer>LogFolio@gmail.com</Footer>
+
       </Container>
     </Wrapper>
   );
