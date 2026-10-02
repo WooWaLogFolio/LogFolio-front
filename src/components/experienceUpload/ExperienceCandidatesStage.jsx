@@ -1,66 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getCandidates, decideCandidate, finalizeAnalysis } from "../../apis/analysisApi";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import CandidateCard from "./CandidateCard";
 import SegmentedProgress from "./SegmentedProgress";
 import { NextButton } from "../common/Button";
-
-const CANDIDATES = [
-  {
-    id: 1,
-    title: "사용자 문제를 재정의한 경험",
-    description:
-      "사용자 인터뷰에서 반복되는 문제를 발견해 기존 서비스 방향과 MVP 우선순위를 다시 정의한 경험",
-    tags: ["문제정의", "사용자 리서치"],
-    sections: [
-      {
-        label: "핵심 판단",
-        text: "사용자에게 새로운 기록을 더 요구하기보다, 이미 존재하는 자료에서 경험을 먼저 찾아주는 것이 핵심 가치가 되어야 한다고 판단했다.",
-      },
-      {
-        label: "결과와 변화",
-        text: "서비스 핵심 Flow가 직접 기록 → AI 질문 중심에서 자료 업로드 → AI 선분석 → 사용자 확인 중심으로 변경됐다.",
-      },
-      {
-        label: "결과와 변화",
-        text: "서비스 핵심 Flow가 직접 기록 → AI 질문 중심에서 자료 업로드 → AI 선분석 → 사용자 확인 중심으로 변경됐다.",
-      },
-    ],
-  },
-  {
-    id: 2,
-    title: "MVP 기능 우선순위를 정한 경험",
-    description:
-      "MVP 기능 후보 8개 중 사용자 핵심 문제 해결 여부와 개발 가능성을 기준으로 핵심 기능을 선정한 경험",
-    tags: ["기획", "우선순위 결정"],
-    sections: [
-      {
-        label: "핵심 판단",
-        text: "모든 기능을 다 구현하기보다, 5주 안에 검증 가능한 핵심 기능에 집중하는 것이 중요하다고 판단했다.",
-      },
-      {
-        label: "결과와 변화",
-        text: "8개 후보 기능에서 핵심 3개 기능으로 범위를 좁혀 개발 일정과 리소스를 집중할 수 있었다.",
-      },
-    ],
-  },
-  {
-    id: 3,
-    title: "공모전 발표를 기획하고 진행한 경험",
-    description: "기획 담당으로서 문제 정의부터 발표까지 전체 스토리라인을 설계하고 팀을 이끈 경험",
-    tags: ["발표 기획", "팀 리딩"],
-    sections: [
-      {
-        label: "핵심 판단",
-        text: "심사위원이 발표 초반에 문제의 심각성을 체감하게 만드는 것이 핵심이라고 판단했다.",
-      },
-      {
-        label: "결과와 변화",
-        text: "발표 구성을 문제 → 검증 → 해결 순으로 재구성해 팀 프로젝트가 공모전 본선에 진출했다.",
-      },
-    ],
-  },
-];
 
 const Wrapper = styled.div`
   width: 100%;
@@ -114,35 +58,71 @@ const CompleteButton = styled(NextButton)`
   margin-top: 32px;
 `;
 
-export default function ExperienceCandidatesStage() {
+const ErrorText = styled.p`
+  margin: 0;
+  color: #e5484d;
+  font-size: 14px;
+  text-align: center;
+`;
+
+export default function ExperienceCandidatesStage({ runId }) {
   const navigate = useNavigate();
+  const [candidates, setCandidates] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [includedCount, setIncludedCount] = useState(0);
   const [done, setDone] = useState(false);
 
-  const total = CANDIDATES.length;
+  useEffect(() => {
+    if (!runId) return;
+    getCandidates(runId)
+      .then(({ data }) => setCandidates(data))
+      .catch(() => setError("경험 후보를 불러오지 못했어요."))
+      .finally(() => setLoading(false));
+  }, [runId]);
 
-  const advance = () => {
-    if (currentIndex >= total - 1) {
-      setDone(true);
-      return;
+  const total = candidates.length;
+
+  const decide = async (decision) => {
+    if (submitting) return;
+    setSubmitting(true);
+    setError("");
+
+    try {
+      await decideCandidate(candidates[currentIndex].id, decision);
+      if (decision === "CREATE_NEW") setIncludedCount((prev) => prev + 1);
+
+      if (currentIndex >= total - 1) {
+        await finalizeAnalysis(runId);
+        setDone(true);
+      } else {
+        setCurrentIndex((prev) => prev + 1);
+      }
+    } catch {
+      setError("저장하지 못했어요. 다시 시도해주세요.");
+    } finally {
+      setSubmitting(false);
     }
-    setCurrentIndex((prev) => prev + 1);
   };
 
-  const handleExclude = () => advance();
-  const handleNext = () => {
-    setIncludedCount((prev) => prev + 1);
-    advance();
-  };
+  if (loading) {
+    return <Description>경험 후보를 불러오는 중이에요...</Description>;
+  }
 
-  if (done) {
+  if (done || total === 0) {
     return (
       <CompleteWrap>
-        <CompleteHeading>경험 정리가 완료됐어요!</CompleteHeading>
-        <CompleteDescription>
-          총 {total}개의 경험 후보 중 {includedCount}개를 아카이브에 추가했어요.
-        </CompleteDescription>
+        <CompleteHeading>
+          {total === 0 ? "찾은 경험 후보가 없어요" : "경험 정리가 완료됐어요!"}
+        </CompleteHeading>
+        {error && <ErrorText>{error}</ErrorText>}
+        {total > 0 && (
+          <CompleteDescription>
+            총 {total}개의 경험 후보 중 {includedCount}개를 아카이브에 추가했어요.
+          </CompleteDescription>
+        )}
         <CompleteButton type="button" onClick={() => navigate("/archive")}>
           아카이브로 이동
         </CompleteButton>
@@ -150,27 +130,26 @@ export default function ExperienceCandidatesStage() {
     );
   }
 
-  const candidate = CANDIDATES[currentIndex];
+  const candidate = candidates[currentIndex];
 
   return (
     <Wrapper>
       <Heading>이 프로젝트에서 {total}개의 경험을 찾았어요.</Heading>
       <Description>하나씩 확인하고 포함할 경험을 선택해주세요.</Description>
-
       <ProgressWrap>
         <SegmentedProgress total={total} currentIndex={currentIndex} label="경험 후보 확인 진행률" />
       </ProgressWrap>
-
+      {error && <ErrorText>{error}</ErrorText>}
       <CardWrap>
         <CandidateCard
           index={currentIndex}
           total={total}
           title={candidate.title}
-          description={candidate.description}
-          tags={candidate.tags}
-          sections={candidate.sections}
-          onExclude={handleExclude}
-          onNext={handleNext}
+          description={candidate.summary}
+          tags={candidate.draftContent?.tags ?? []}
+          sections={candidate.draftContent?.sections ?? []}
+          onExclude={() => decide("EXCLUDED")}
+          onNext={() => decide("CREATE_NEW")}
         />
       </CardWrap>
     </Wrapper>
