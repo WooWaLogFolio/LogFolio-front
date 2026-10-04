@@ -1,10 +1,17 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import AppHeader from "../components/layout/AppHeader";
 import QuickRecordModal from "../components/archive/QuickRecordModal";
 import RecordList from "../components/archive/RecordList";
-import { initialProjects, initialRecords } from "../data/archiveMockData";
+import {
+  createQuickLog,
+  deleteQuickLog,
+  getAllQuickLogs,
+  getArchive,
+  linkQuickLogProject,
+  updateQuickLog,
+} from "../apis/archiveApi";
 import clockIcon from "../assets/icons/archive/clock.svg";
 import plusWhiteSmallIcon from "../assets/icons/archive/plus-white-small.svg";
 import plusGrayIcon from "../assets/icons/archive/plus-gray.svg";
@@ -13,6 +20,60 @@ import emptyDocumentIcon from "../assets/icons/archive/empty-document.svg";
 import plusWhiteIcon from "../assets/icons/archive/plus-white.svg";
 
 const filters = ["전체", "정리 중", "검토 필요", "보완 필요", "저장 완료"];
+
+const projectStatus = {
+  IN_PROGRESS: "정리 중",
+  COMPLETED: "저장 완료",
+};
+
+const formatMonth = (date) => date?.slice(0, 7).replace("-", ".") ?? "";
+
+const formatPeriod = (startedAt, endedAt) => {
+  const start = formatMonth(startedAt);
+  const end = formatMonth(endedAt);
+
+  if (start && end) return `${start} — ${end}`;
+  if (start) return `${start} — 진행 중`;
+  return "기간 미정";
+};
+
+const mapProject = ({ project, experienceCount }) => ({
+  id: project.id,
+  title: project.name,
+  period: formatPeriod(project.startedAt, project.endedAt),
+  role: [project.activityType, project.userRole, project.teamSize ? `팀 ${project.teamSize}명` : null]
+    .filter(Boolean)
+    .join(" · ") || "역할 미지정",
+  tags: project.tags ?? [],
+  status: projectStatus[project.status] ?? project.status,
+  cardCount: experienceCount,
+});
+
+const mapQuickLog = (record) => {
+  const createdAt = new Date(record.createdAt);
+  const validDate = !Number.isNaN(createdAt.getTime());
+
+  return {
+    id: record.id,
+    projectId: record.projectId ?? null,
+    projectTitle: record.projectName ?? null,
+    content: record.content,
+    date: validDate
+      ? createdAt.toLocaleDateString("ko-KR", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }).replace(/\. /g, ".").replace(/\.$/, "")
+      : "",
+    time: validDate
+      ? createdAt.toLocaleTimeString("ko-KR", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        })
+      : "",
+  };
+};
 
 const Page = styled.div`
   min-height: 100vh;
@@ -352,6 +413,37 @@ const EmptyState = styled.main`
   }
 `;
 
+const FeedbackState = styled.main`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 57px);
+  padding: 80px 24px;
+  color: ${({ theme }) => theme.colors.textGray};
+  text-align: center;
+
+  button {
+    height: 40px;
+    margin-top: 20px;
+    padding: 0 18px;
+    border-radius: 8px;
+    background: ${({ theme }) => theme.colors.primary};
+    color: white;
+    font-weight: 700;
+  }
+`;
+
+const ErrorNotice = styled.p`
+  margin: 0 auto 20px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: #fff3f1;
+  color: #d92d20;
+  font-size: 14px;
+  line-height: 22px;
+`;
+
 
 function ProjectCards({ projects, filter, onOpenProject, onAddProject }) {
   const visible = filter === "전체"
@@ -391,45 +483,124 @@ function ProjectCards({ projects, filter, onOpenProject, onAddProject }) {
 
 export default function ArchivePage() {
   const navigate = useNavigate();
-  const projects = initialProjects;
+  const [projects, setProjects] = useState([]);
+  const [experienceCount, setExperienceCount] = useState(0);
+  const [quickLogCount, setQuickLogCount] = useState(0);
   const [filter, setFilter] = useState("전체");
-  const [records, setRecords] = useState(initialRecords);
+  const [records, setRecords] = useState([]);
   const [quickRecordOpen, setQuickRecordOpen] = useState(false);
   const [showAllRecords, setShowAllRecords] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [recordsLoading, setRecordsLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const cardCount = useMemo(
-    () => initialProjects.reduce((sum, project) => sum + project.cardCount, 0),
-    [],
-  );
+  const loadArchive = useCallback(async () => {
+    try {
+      const { data } = await getArchive();
+      setProjects((data.projects ?? []).map(mapProject));
+      setExperienceCount(data.experienceCount ?? 0);
+      setQuickLogCount(data.quickLogCount ?? 0);
+      setRecords((data.recentQuickLogs ?? []).map(mapQuickLog));
+    } catch (requestError) {
+      if (requestError.response?.status === 401) {
+        navigate("/login", { replace: true });
+        return;
+      }
+      setError(requestError.response?.data?.detail ?? "경험 아카이브를 불러오지 못했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  }, [navigate]);
 
-  const addRecord = ({ content, projectId }) => {
-    const now = new Date();
-    const date = now.toLocaleDateString("ko-KR", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).replace(/\. /g, ".").replace(/\.$/, "");
-    const time = now.toLocaleTimeString("ko-KR", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-    setRecords((prev) => [{ id: Date.now(), date, time, projectId, content }, ...prev]);
-    setQuickRecordOpen(false);
+  useEffect(() => {
+    // The initial archive request synchronizes this route with server state.
+    // oxlint-disable-next-line react/set-state-in-effect
+    loadArchive();
+  }, [loadArchive]);
+
+  const addRecord = async ({ content, projectId }) => {
+    setError("");
+    try {
+      const { data } = await createQuickLog({ content, projectId });
+      setRecords((prev) => [mapQuickLog(data), ...prev]);
+      setQuickLogCount((count) => count + 1);
+      setQuickRecordOpen(false);
+      return true;
+    } catch (requestError) {
+      setError(requestError.response?.data?.detail ?? "30초 기록을 저장하지 못했습니다.");
+      return false;
+    }
   };
 
-  const updateRecord = (id, updates) => {
-    setRecords((prev) => prev.map((record) => (
-      record.id === id ? { ...record, ...updates } : record
-    )));
+  const updateRecord = async (id, updates) => {
+    setError("");
+    try {
+      const response = Object.hasOwn(updates, "content")
+        ? await updateQuickLog(id, updates.content)
+        : await linkQuickLogProject(id, updates.projectId);
+      const updated = mapQuickLog(response.data);
+      setRecords((prev) => prev.map((record) => record.id === id ? updated : record));
+      return true;
+    } catch (requestError) {
+      setError(requestError.response?.data?.detail ?? "30초 기록을 수정하지 못했습니다.");
+      return false;
+    }
   };
 
-  const deleteRecord = (id) => {
-    setRecords((prev) => prev.filter((record) => record.id !== id));
+  const deleteRecord = async (id) => {
+    setError("");
+    try {
+      await deleteQuickLog(id);
+      setRecords((prev) => prev.filter((record) => record.id !== id));
+      setQuickLogCount((count) => Math.max(0, count - 1));
+      return true;
+    } catch (requestError) {
+      setError(requestError.response?.data?.detail ?? "30초 기록을 삭제하지 못했습니다.");
+      return false;
+    }
+  };
+
+  const openAllRecords = async () => {
+    setShowAllRecords(true);
+    setRecordsLoading(true);
+    setError("");
+    try {
+      const items = await getAllQuickLogs();
+      setRecords(items.map(mapQuickLog));
+    } catch (requestError) {
+      setError(requestError.response?.data?.detail ?? "전체 기록을 불러오지 못했습니다.");
+    } finally {
+      setRecordsLoading(false);
+    }
   };
 
   const findProjectTitle = (id) =>
     projects.find((project) => project.id === id)?.title ?? "프로젝트 미지정";
+
+  if (loading) {
+    return (
+      <Page>
+        <AppHeader />
+        <FeedbackState>경험 아카이브를 불러오는 중입니다.</FeedbackState>
+      </Page>
+    );
+  }
+
+  if (error && projects.length === 0) {
+    return (
+      <Page>
+        <AppHeader />
+        <FeedbackState>
+          <p>{error}</p>
+          <button type="button" onClick={() => {
+            setLoading(true);
+            setError("");
+            loadArchive();
+          }}>다시 시도</button>
+        </FeedbackState>
+      </Page>
+    );
+  }
 
   if (projects.length === 0) {
     return (
@@ -454,13 +625,18 @@ export default function ArchivePage() {
         <AppHeader onArchiveClick={() => setShowAllRecords(false)} />
         <RecordsMain>
           <RecordsTitle>전체 기록</RecordsTitle>
-          <RecordsSubtitle>총 {records.length}개의 30초 기록</RecordsSubtitle>
-          <RecordList
-            records={records}
-            projects={projects}
-            onUpdate={updateRecord}
-            onDelete={deleteRecord}
-          />
+          <RecordsSubtitle>총 {quickLogCount}개의 30초 기록</RecordsSubtitle>
+          {error && <ErrorNotice>{error}</ErrorNotice>}
+          {recordsLoading
+            ? <p>전체 기록을 불러오는 중입니다.</p>
+            : (
+              <RecordList
+                records={records}
+                projects={projects}
+                onUpdate={updateRecord}
+                onDelete={deleteRecord}
+              />
+            )}
         </RecordsMain>
       </Page>
     );
@@ -470,10 +646,11 @@ export default function ArchivePage() {
     <Page>
       <AppHeader onArchiveClick={() => setShowAllRecords(false)} />
       <Main>
+        {error && <ErrorNotice>{error}</ErrorNotice>}
         <HeadingRow>
           <div>
             <Title>경험 아카이브</Title>
-            <Subtitle>총 {projects.length}개 프로젝트 · 경험카드 {cardCount}개</Subtitle>
+            <Subtitle>총 {projects.length}개 프로젝트 · 경험카드 {experienceCount}개</Subtitle>
           </div>
           <TopActions>
             <TopButton type="button" onClick={() => setQuickRecordOpen(true)}>
@@ -512,12 +689,12 @@ export default function ArchivePage() {
         <RecentSection>
           <SectionHeader>
             <h2>최근 30초 기록</h2>
-            <button type="button" onClick={() => setShowAllRecords(true)}>전체 30초 기록 보기 →</button>
+            <button type="button" onClick={openAllRecords}>전체 30초 기록 보기 →</button>
           </SectionHeader>
           {records.slice(0, 3).map((record) => (
             <RecentItem key={record.id}>
               <p>{record.content}</p>
-              <span>{record.date} · → {findProjectTitle(record.projectId)}</span>
+              <span>{record.date} · → {record.projectTitle ?? findProjectTitle(record.projectId)}</span>
             </RecentItem>
           ))}
         </RecentSection>

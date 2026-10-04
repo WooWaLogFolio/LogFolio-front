@@ -168,9 +168,10 @@ export default function RecordList({ records, projects, onUpdate, onDelete }) {
               <>
                 <EditArea value={editValue} onChange={(e) => setEditValue(e.target.value)} />
                 <EditActions>
-                  <button type="button" onClick={() => {
-                    onUpdate(record.id, { content: editValue.trim() });
-                    setEditingId(null);
+                  <button type="button" onClick={async () => {
+                    if (!editValue.trim()) return;
+                    const saved = await onUpdate(record.id, { content: editValue.trim() });
+                    if (saved) setEditingId(null);
                   }}>저장</button>
                   <button type="button" onClick={() => setEditingId(null)}>취소</button>
                 </EditActions>
@@ -203,7 +204,10 @@ export default function RecordList({ records, projects, onUpdate, onDelete }) {
                   setProjectPopupId(record.id);
                   setMenuId(null);
                 }}>프로젝트 연결/변경</button>
-                <button type="button" onClick={() => onDelete(record.id)}>삭제</button>
+                <button type="button" onClick={async () => {
+                  const deleted = await onDelete(record.id);
+                  if (deleted) setMenuId(null);
+                }}>삭제</button>
               </Menu>
             )}
 
@@ -215,14 +219,24 @@ export default function RecordList({ records, projects, onUpdate, onDelete }) {
                     <img src={closeIcon} alt="닫기" />
                   </button>
                 </PopupHeader>
-                {projects.slice(1).map((option) => (
+                <ProjectOption
+                  type="button"
+                  $selected={!record.projectId}
+                  onClick={async () => {
+                    const saved = await onUpdate(record.id, { projectId: null });
+                    if (saved) setProjectPopupId(null);
+                  }}
+                >
+                  {!record.projectId ? "✓ " : ""}프로젝트 미지정
+                </ProjectOption>
+                {projects.map((option) => (
                   <ProjectOption
                     key={option.id}
                     type="button"
                     $selected={option.id === record.projectId}
-                    onClick={() => {
-                      onUpdate(record.id, { projectId: option.id });
-                      setProjectPopupId(null);
+                    onClick={async () => {
+                      const saved = await onUpdate(record.id, { projectId: option.id });
+                      if (saved) setProjectPopupId(null);
                     }}
                   >
                     {option.id === record.projectId ? "✓ " : ""}{option.title}
