@@ -116,11 +116,18 @@ const Action = styled.button`
 export default function QuickRecordModal({ projects, onClose, onSave }) {
   const [content, setContent] = useState("");
   const [projectId, setProjectId] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!content.trim()) return;
-    onSave({ content: content.trim(), projectId: projectId ? Number(projectId) : null });
+    if (!content.trim() || saving) return;
+
+    setSaving(true);
+    const saved = await onSave({
+      content: content.trim(),
+      projectId: projectId || null,
+    });
+    if (!saved) setSaving(false);
   };
 
   return (
@@ -152,8 +159,10 @@ export default function QuickRecordModal({ projects, onClose, onSave }) {
           </Select>
           <Help>선택하지 않으면 “프로젝트 미지정”으로 저장돼요.</Help>
           <Actions>
-            <Action type="button" onClick={onClose}>취소</Action>
-            <Action type="submit" $primary disabled={!content.trim()}>저장</Action>
+            <Action type="button" onClick={onClose} disabled={saving}>취소</Action>
+            <Action type="submit" $primary disabled={!content.trim() || saving}>
+              {saving ? "저장 중..." : "저장"}
+            </Action>
           </Actions>
         </form>
       </Modal>
