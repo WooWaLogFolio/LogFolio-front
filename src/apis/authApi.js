@@ -1,6 +1,5 @@
 import axiosInstance from "./axiosInstance";
-
-const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/$/, "");
+import { API_BASE_URL } from "./apiConfig";
 
 export const login = ({ email, password }) =>
   axiosInstance.post("/auth/login", { email, password });
@@ -26,5 +25,5 @@ export const completeSocialSignup = async (email) => {
 };
 
 export const startSocialLogin = (provider) => {
-  window.location.assign(`${apiBaseUrl}/auth/login/${provider}`);
+  window.location.assign(`${API_BASE_URL}/auth/login/${provider}`);
 };
