@@ -13,14 +13,14 @@ const csrfConfig = async () => {
 
 export const getArchive = () => axiosInstance.get("/archive");
 
-export const getAllQuickLogs = async () => {
+export const getAllQuickLogs = async (projectId) => {
   const items = [];
   let page = 0;
   let hasNext = true;
 
   while (hasNext) {
     const { data } = await axiosInstance.get("/quick-logs", {
-      params: { page, size: 100 },
+      params: { page, size: 100, ...(projectId ? { projectId } : {}) },
     });
     items.push(...data.items);
     hasNext = data.hasNext;

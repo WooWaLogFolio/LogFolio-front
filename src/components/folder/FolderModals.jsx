@@ -32,12 +32,25 @@ const Button = styled.button`
   &:disabled { background: ${({theme})=>theme.colors.border}; color: ${({theme})=>theme.colors.textGray}; opacity: .55; }
 `;
 
-export function FolderQuickRecordModal({ onClose, onSave }) {
+export function FolderQuickRecordModal({ projectName, onClose, onSave }) {
   const [value,setValue]=useState("");
   return <Overlay onMouseDown={(e)=>e.target===e.currentTarget&&onClose()}><Modal role="dialog" aria-modal="true">
-    <Title>30초 기록</Title><Copy>스타트업 공모전 서비스 기획 프로젝트에 기록을 남겨요.</Copy>
+    <Title>30초 기록</Title><Copy>{projectName} 프로젝트에 기록을 남겨요.</Copy>
     <Textarea autoFocus value={value} onChange={(e)=>setValue(e.target.value)} placeholder="방금 한 일이나 느낀 점을 짧게 남겨주세요." />
     <Actions><Button onClick={onClose}>취소</Button><Button $primary disabled={!value.trim()} onClick={()=>onSave(value.trim())}>저장</Button></Actions>
+  </Modal></Overlay>;
+}
+
+export function ExperienceCreateModal({ onClose, onSave }) {
+  const [title,setTitle]=useState("");
+  const [summary,setSummary]=useState("");
+  const [saving,setSaving]=useState(false);
+  const submit=async()=>{if(!title.trim()||saving)return;setSaving(true);const saved=await onSave({title:title.trim(),summary:summary.trim(),context:"",contribution:"",decisionReason:"",action:"",result:"",learning:"",status:"ORGANIZING"});if(!saved)setSaving(false);};
+  return <Overlay onMouseDown={(e)=>e.target===e.currentTarget&&onClose()}><Modal role="dialog" aria-modal="true">
+    <Title>경험 카드 추가</Title><Copy>프로젝트에서 정리할 경험을 직접 추가해요.</Copy>
+    <Textarea autoFocus value={title} onChange={(e)=>setTitle(e.target.value)} placeholder="경험 제목" />
+    <Textarea value={summary} onChange={(e)=>setSummary(e.target.value)} placeholder="경험을 한두 문장으로 요약해 주세요." />
+    <Actions><Button onClick={onClose} disabled={saving}>취소</Button><Button $primary disabled={!title.trim()||saving} onClick={submit}>{saving?"저장 중...":"경험 카드 추가"}</Button></Actions>
   </Modal></Overlay>;
 }
 

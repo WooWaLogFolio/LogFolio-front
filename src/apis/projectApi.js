@@ -11,6 +11,12 @@ export const updateProject = async (projectId, project) =>
     headers: await getCsrfHeaders(),
   });
 
+export const getProject = (projectId) =>
+  axiosInstance.get(`/projects/${projectId}`);
+
+export const getProjectFiles = (projectId) =>
+  axiosInstance.get(`/projects/${projectId}/files`);
+
 export const uploadProjectFile = async (projectId, file) => {
   const formData = new FormData();
   formData.append("file", file);
@@ -22,3 +28,8 @@ export const uploadProjectFile = async (projectId, file) => {
     },
   });
 };
+
+export const deleteProjectFile = async (fileId) =>
+  axiosInstance.delete(`/files/${fileId}`, {
+    headers: await getCsrfHeaders(),
+  });
