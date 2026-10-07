@@ -1,9 +1,11 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import styled from "styled-components";
 import AppHeader from "../components/layout/AppHeader";
 import AICoachPanel from "../components/folder/AICoachPanel";
-import { evidenceItems, experienceDetail, folderProject } from "../data/folderMockData";
+import { getAllQuickLogs } from "../apis/archiveApi";
+import { deleteExperience, getExperience, getExperienceEvidence, updateExperience } from "../apis/experienceApi";
+import { getProject } from "../apis/projectApi";
 
 const Page=styled.div`min-height:100vh;color:${({theme})=>theme.colors.textDark};background:white;`;
 const CrumbBar=styled.div`border-bottom:1px solid ${({theme})=>theme.colors.border};`;
@@ -24,7 +26,7 @@ const DrawerHead=styled.div`display:flex;justify-content:space-between;padding:2
 const Evidence=styled.article`margin:18px 24px 0;border:1px solid ${({theme})=>theme.colors.border};border-radius:12px;overflow:hidden;`;
 const FileHead=styled.div`display:flex;align-items:center;gap:8px;padding:14px;font-size:12px;font-weight:700;b{padding:3px 5px;border:1px solid ${({theme})=>theme.colors.border};border-radius:4px;color:${({theme})=>theme.colors.textGray};font-size:9px;}span:last-child{margin-left:auto;color:${({theme})=>theme.colors.textGray};font-weight:400;}`;
 const EvidenceBlock=styled.div`padding:12px 14px;border-top:1px solid ${({theme})=>theme.colors.border};font-size:11px;line-height:19px;&.quote{background:${({theme})=>theme.colors.primaryLight};}strong{display:block;margin-bottom:5px;color:${({theme})=>theme.colors.textGray};font-size:10px;}`;
-const LinkTags=styled.div`display:flex;flex-wrap:wrap;gap:5px;margin-top:7px;span{padding:3px 7px;border:1px solid ${({theme})=>theme.colors.border};border-radius:100px;color:${({theme})=>theme.colors.textGray};font-size:10px;}`;
+const Feedback=styled.div`display:grid;min-height:calc(100vh - 100px);place-items:center;color:${({theme})=>theme.colors.textGray};text-align:center;button{display:block;margin:18px auto 0;padding:10px 16px;border-radius:8px;background:${({theme})=>theme.colors.primary};color:white;font-weight:700;}`;
 
 function EditableSection({ label, english, value, onSave, onAI, applied }) {
  const [editing,setEditing]=useState(false); const [draft,setDraft]=useState(value);
@@ -36,16 +38,25 @@ function EditableSection({ label, english, value, onSave, onAI, applied }) {
 }
 
 export default function ExperienceDetailPage(){
- const navigate=useNavigate(); const [drawer,setDrawer]=useState(false); const [fields,setFields]=useState({role:experienceDetail.role,decisions:experienceDetail.decisions,outcome:experienceDetail.outcome,context:experienceDetail.context,actions:experienceDetail.actions,learning:experienceDetail.learning}); const [applied,setApplied]=useState(false); const [coachVersion,setCoachVersion]=useState(0); const [coachStage,setCoachStage]=useState("questions");
- const updateField=(key,value)=>setFields(prev=>({...prev,[key]:value}));
+ const navigate=useNavigate(); const {projectId,experienceId}=useParams(); const [drawer,setDrawer]=useState(false); const [project,setProject]=useState(null); const [experience,setExperience]=useState(null); const [evidenceItems,setEvidenceItems]=useState([]); const [records,setRecords]=useState([]); const [fields,setFields]=useState({role:"",decisions:"",outcome:"",context:"",actions:"",learning:""}); const [loading,setLoading]=useState(true); const [error,setError]=useState(""); const [applied,setApplied]=useState(false); const [coachVersion,setCoachVersion]=useState(0); const [coachStage,setCoachStage]=useState("questions");
+ const load=useCallback(async()=>{setError("");try{const [projectResponse,experienceResponse,evidenceResponse,recordItems]=await Promise.all([getProject(projectId),getExperience(experienceId),getExperienceEvidence(experienceId),getAllQuickLogs(projectId)]);const item=experienceResponse.data;setProject(projectResponse.data);setExperience(item);setEvidenceItems(evidenceResponse.data??[]);setRecords(recordItems??[]);setFields({role:item.contribution??"",decisions:item.decisionReason??"",outcome:item.result??"",context:item.context??"",actions:item.action??"",learning:item.learning??""});}catch(requestError){if(requestError.response?.status===401){navigate("/login",{replace:true});return;}setError(requestError.response?.data?.detail??"경험 카드를 불러오지 못했습니다.");}finally{setLoading(false);}},[experienceId,navigate,projectId]);
+ useEffect(()=>{
+  // oxlint-disable-next-line react/set-state-in-effect
+  load();
+ },[load]);
+ const requestBody=(nextFields)=>({title:experience.title,summary:experience.summary??"",context:nextFields.context,contribution:nextFields.role,decisionReason:nextFields.decisions,action:nextFields.actions,result:nextFields.outcome,learning:nextFields.learning,status:experience.status});
+ const updateField=async(key,value)=>{const next={...fields,[key]:value};try{const {data}=await updateExperience(experienceId,requestBody(next));setFields(next);setExperience(data);}catch(requestError){setError(requestError.response?.data?.detail??"경험 카드를 수정하지 못했습니다.");}};
+ const remove=async()=>{if(!window.confirm("이 경험 카드를 삭제할까요?"))return;try{await deleteExperience(experienceId);navigate(`/archive/${projectId}`,{replace:true});}catch(requestError){setError(requestError.response?.data?.detail??"경험 카드를 삭제하지 못했습니다.");}};
  const openCoach=()=>{setCoachStage("complete");setCoachVersion(v=>v+1);};
- return <Page><AppHeader onArchiveClick={()=>navigate("/archive")}/><CrumbBar><Crumbs><button onClick={()=>navigate("/archive")}>경험 아카이브</button>　/　<button onClick={()=>navigate(`/archive/${folderProject.id}`)}>{folderProject.title}</button>　/　<strong>{experienceDetail.title}</strong></Crumbs></CrumbBar>
-  <Layout><article><Title>{experienceDetail.title}</Title><Subtitle>{experienceDetail.subtitle}</Subtitle><HeadActions><button onClick={()=>setDrawer(true)}>⚑ 근거 자료 {experienceDetail.evidenceCount}개</button><button aria-label="경험 메뉴">···</button></HeadActions><SummaryTitle>핵심 요약</SummaryTitle>
+ if(loading)return <Page><AppHeader onArchiveClick={()=>navigate("/archive")}/><Feedback>경험 카드를 불러오는 중입니다.</Feedback></Page>;
+ if(!experience||!project)return <Page><AppHeader onArchiveClick={()=>navigate("/archive")}/><Feedback><div>{error||"경험 카드를 찾을 수 없습니다."}<button type="button" onClick={()=>navigate(`/archive/${projectId}`)}>프로젝트로 돌아가기</button></div></Feedback></Page>;
+ return <Page><AppHeader onArchiveClick={()=>navigate("/archive")}/><CrumbBar><Crumbs><button onClick={()=>navigate("/archive")}>경험 아카이브</button>　/　<button onClick={()=>navigate(`/archive/${project.id}`)}>{project.name}</button>　/　<strong>{experience.title}</strong></Crumbs></CrumbBar>
+  <Layout><article>{error&&<Subtitle>{error}</Subtitle>}<Title>{experience.title}</Title><Subtitle>{experience.summary||"아직 요약이 없습니다."}</Subtitle><HeadActions><button onClick={()=>setDrawer(true)}>⚑ 근거 자료 {experience.evidenceCount}개</button><button onClick={remove}>경험 삭제</button></HeadActions><SummaryTitle>핵심 요약</SummaryTitle>
    <EditableSection label="나의 역할" english="My Role" value={fields.role} onSave={v=>updateField("role",v)} onAI={openCoach} applied={applied}/>
    <EditableSection label="핵심 판단" english="Key Decisions" value={fields.decisions} onSave={v=>updateField("decisions",v)} onAI={openCoach}/>
    <EditableSection label="결과와 변화" english="Outcome" value={fields.outcome} onSave={v=>updateField("outcome",v)} onAI={openCoach}/>
    <SummaryTitle>상세 내용</SummaryTitle><EditableSection label="상황과 문제" english="Context" value={fields.context} onSave={v=>updateField("context",v)} onAI={openCoach}/><EditableSection label="실행" english="Actions" value={fields.actions} onSave={v=>updateField("actions",v)} onAI={openCoach}/><EditableSection label="이 경험 이후 달라진 판단" english="Learning" value={fields.learning} onSave={v=>updateField("learning",v)} onAI={openCoach}/>
-  </article><AICoachPanel key={coachVersion} roleText={fields.role} startStage={coachStage} onApply={(suggestion)=>{updateField("role",suggestion);setApplied(true);}}/></Layout>
-  {drawer&&<DrawerOverlay onMouseDown={e=>e.target===e.currentTarget&&setDrawer(false)}><Drawer><DrawerHead><h2>근거 자료</h2><button onClick={()=>setDrawer(false)}>×</button></DrawerHead>{evidenceItems.map((e,i)=><Evidence key={i}><FileHead><b>{e.type}</b><span>{e.name}</span><span>{e.page}</span></FileHead><EvidenceBlock className="quote"><strong>근거 원문</strong>“{e.quote}”</EvidenceBlock><EvidenceBlock><strong>이 근거로 정리한 내용</strong>→ {e.summary}</EvidenceBlock><EvidenceBlock><strong>연결된 항목</strong><LinkTags>{e.links.map(x=><span key={x}>{x}</span>)}</LinkTags></EvidenceBlock></Evidence>)}</Drawer></DrawerOverlay>}
+  </article><AICoachPanel key={coachVersion} roleText={fields.role} records={records} startStage={coachStage} onApply={async(suggestion)=>{await updateField("role",suggestion);setApplied(true);}}/></Layout>
+  {drawer&&<DrawerOverlay onMouseDown={e=>e.target===e.currentTarget&&setDrawer(false)}><Drawer><DrawerHead><h2>근거 자료</h2><button onClick={()=>setDrawer(false)}>×</button></DrawerHead>{evidenceItems.length?evidenceItems.map(e=><Evidence key={e.id}><FileHead><b>{e.fileName?.split(".").pop()?.toUpperCase()||"기록"}</b><span>{e.fileName||"30초 기록"}</span><span>{e.location||""}</span></FileHead><EvidenceBlock className="quote"><strong>근거 원문</strong>“{e.excerpt||"내용 없음"}”</EvidenceBlock><EvidenceBlock><strong>연결 정보</strong>{e.quickLogId?"30초 기록에서 연결됨":"업로드 자료에서 연결됨"}</EvidenceBlock></Evidence>):<EvidenceBlock>연결된 근거 자료가 없습니다.</EvidenceBlock>}</Drawer></DrawerOverlay>}
  </Page>;
 }
