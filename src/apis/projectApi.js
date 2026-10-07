@@ -17,6 +17,8 @@ export const getProject = (projectId) =>
 export const getProjectFiles = (projectId) =>
   axiosInstance.get(`/projects/${projectId}/files`);
 
+export const getStorage = () => axiosInstance.get("/storage");
+
 export const uploadProjectFile = async (projectId, file) => {
   const formData = new FormData();
   formData.append("file", file);

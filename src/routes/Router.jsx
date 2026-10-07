@@ -8,6 +8,7 @@ import ExperienceDetailPage from "../pages/ExperienceDetailPage";
 import ExperienceFolderPage from "../pages/ExperienceFolderPage";
 import OAuthSuccessPage from "../pages/OAuthSuccessPage";
 import CompleteSocialSignupPage from "../pages/CompleteSocialSignupPage";
+import SettingsPage from "../pages/SettingsPage";
 
 export default function Router() {
   return (
@@ -23,6 +24,7 @@ export default function Router() {
         />
         <Route path="/onboarding" element={<OnboardingPage />} />
         <Route path="/archive" element={<ArchivePage />} />
+        <Route path="/settings" element={<SettingsPage />} />
         <Route path="/experience-upload" element={<ExperienceUploadPage />} />
         <Route path="/archive/:projectId" element={<ExperienceFolderPage />} />
         <Route path="/archive/:projectId/experiences/:experienceId" element={<ExperienceDetailPage />} />
