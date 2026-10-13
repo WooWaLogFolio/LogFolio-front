@@ -27,3 +27,12 @@ export const completeSocialSignup = async (email) => {
 export const startSocialLogin = (provider) => {
   window.location.assign(`${API_BASE_URL}/auth/login/${provider}`);
 };
+
+export const logout = async () => {
+  const { data: csrf } = await getCsrfToken();
+  return axiosInstance.post(
+    "/auth/logout",
+    null,
+    { headers: { [csrf.headerName]: csrf.token } },
+  );
+};

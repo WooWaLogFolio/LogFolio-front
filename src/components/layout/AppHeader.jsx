@@ -1,4 +1,5 @@
 import styled from "styled-components";
+import { useLocation, useNavigate } from "react-router-dom";
 import logo from "../../assets/images/logo.svg";
 
 const Header = styled.header`
@@ -89,12 +90,18 @@ const Avatar = styled.div`
   font-weight: 700;
 `;
 
-export default function AppHeader({ onArchiveClick, pageTitle }) {
+export default function AppHeader({ onArchiveClick, onSettingsClick, pageTitle, userName = "김" }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const openArchive = onArchiveClick ?? (() => navigate("/archive"));
+  const openSettings = onSettingsClick ?? (() => navigate("/settings"));
+  const initial = userName.trim().charAt(0) || "김";
+
   return (
     <Header>
       <Inner>
         <Left>
-          <Brand type="button" onClick={onArchiveClick}>
+          <Brand type="button" onClick={openArchive}>
             <img src={logo} alt="" />
             LogFolio
           </Brand>
@@ -105,14 +112,14 @@ export default function AppHeader({ onArchiveClick, pageTitle }) {
             </PageContext>
           ) : (
             <Navigation aria-label="주요 메뉴">
-              <NavButton type="button" $active onClick={onArchiveClick}>
+              <NavButton type="button" $active={location.pathname.startsWith("/archive")} onClick={openArchive}>
                 경험 아카이브
               </NavButton>
-              <NavButton type="button">설정</NavButton>
+              <NavButton type="button" $active={location.pathname.startsWith("/settings")} onClick={openSettings}>설정</NavButton>
             </Navigation>
           )}
         </Left>
-        <Avatar aria-label="김 님 프로필">김</Avatar>
+        <Avatar aria-label={`${userName} 님 프로필`}>{initial}</Avatar>
       </Inner>
     </Header>
   );
