@@ -1,6 +1,8 @@
 import styled from "styled-components";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import logo from "../../assets/images/logo.svg";
+import { getUserProfile } from "../../apis/userApi";
 
 const Header = styled.header`
   height: 57px;
@@ -90,12 +92,31 @@ const Avatar = styled.div`
   font-weight: 700;
 `;
 
-export default function AppHeader({ onArchiveClick, onSettingsClick, pageTitle, userName = "김" }) {
+export default function AppHeader({ onArchiveClick, onSettingsClick, pageTitle, userName }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const [fetchedUserName, setFetchedUserName] = useState("");
   const openArchive = onArchiveClick ?? (() => navigate("/archive"));
   const openSettings = onSettingsClick ?? (() => navigate("/settings"));
-  const initial = userName.trim().charAt(0) || "김";
+  const displayName = userName?.trim() || fetchedUserName.trim() || "김";
+  const initial = displayName.charAt(0);
+
+  useEffect(() => {
+    if (userName) return undefined;
+
+    let active = true;
+    getUserProfile()
+      .then(({ data }) => {
+        if (active) setFetchedUserName(data.name ?? "");
+      })
+      .catch(() => {
+        // 로그인 여부와 오류 처리는 각 페이지에서 담당합니다.
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [userName]);
 
   return (
     <Header>
@@ -119,7 +140,7 @@ export default function AppHeader({ onArchiveClick, onSettingsClick, pageTitle, 
             </Navigation>
           )}
         </Left>
-        <Avatar aria-label={`${userName} 님 프로필`}>{initial}</Avatar>
+        <Avatar aria-label={`${displayName} 님 프로필`}>{initial}</Avatar>
       </Inner>
     </Header>
   );
