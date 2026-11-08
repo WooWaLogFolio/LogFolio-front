@@ -15,9 +15,11 @@ const Title=styled.h1`font-size:24px;line-height:34px;letter-spacing:-.5px;`;
 const Subtitle=styled.p`margin-top:8px;color:${({theme})=>theme.colors.textGray};font-size:13px;line-height:21px;`;
 const HeadActions=styled.div`display:flex;gap:8px;margin-top:18px;button{height:34px;padding:0 12px;border:1px solid ${({theme})=>theme.colors.border};border-radius:7px;color:${({theme})=>theme.colors.textGray};font-size:12px;}`;
 const SummaryTitle=styled.p`margin-top:44px;padding-bottom:12px;border-bottom:1px solid ${({theme})=>theme.colors.border};font-size:12px;font-weight:700;letter-spacing:.04em;`;
-const Section=styled.section`position:relative;padding:24px 0;border-bottom:1px solid ${({theme})=>theme.colors.border};h2{font-size:13px;line-height:20px;}h2 span{margin-left:6px;color:${({theme})=>theme.colors.textFooter};font-size:11px;font-weight:400;}p{margin-top:12px;font-size:13px;line-height:24px;white-space:pre-line;}&:hover .section-actions,&:focus-within .section-actions{opacity:1;pointer-events:auto;}`;
-const AiNote=styled.span`float:right;color:${({theme})=>theme.colors.primary}!important;font-size:11px!important;font-weight:600!important;`;
-const HoverActions=styled.div`position:absolute;top:22px;right:0;display:flex;gap:4px;opacity:0;pointer-events:none;transition:opacity .15s;button{font-size:12px;font-weight:700;}button:first-child{color:${({theme})=>theme.colors.primary};}button:last-child{color:${({theme})=>theme.colors.textGray};font-weight:400;}`;
+const Section=styled.section`padding:24px 0;border-bottom:1px solid ${({theme})=>theme.colors.border};p{margin-top:12px;font-size:13px;line-height:24px;white-space:pre-line;}&:hover .section-actions,&:focus-within .section-actions{opacity:1;pointer-events:auto;}`;
+const SectionHeader=styled.div`display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 16px;h2{font-size:13px;line-height:20px;}h2 span{margin-left:6px;color:${({theme})=>theme.colors.textFooter};font-size:11px;font-weight:400;}`;
+const SectionTools=styled.div`display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:12px;margin-left:auto;`;
+const AiNote=styled.span`color:${({theme})=>theme.colors.primary};font-size:11px;font-weight:600;white-space:nowrap;`;
+const HoverActions=styled.div`display:flex;gap:4px;opacity:0;pointer-events:none;transition:opacity .15s;white-space:nowrap;button{font-size:12px;font-weight:700;}button:first-child{color:${({theme})=>theme.colors.primary};}button:last-child{color:${({theme})=>theme.colors.textGray};font-weight:400;}@media(max-width:720px){opacity:1;pointer-events:auto;}`;
 const EditArea=styled.textarea`width:100%;min-height:108px;margin-top:12px;padding:12px 14px;resize:vertical;border:1.5px solid ${({theme})=>theme.colors.primary};border-radius:8px;color:${({theme})=>theme.colors.textDark};font:inherit;font-size:13px;line-height:24px;&:focus{outline:none;}`;
 const EditActions=styled.div`display:flex;justify-content:flex-end;gap:7px;margin-top:8px;button{height:32px;padding:0 13px;border:1px solid ${({theme})=>theme.colors.border};border-radius:7px;color:${({theme})=>theme.colors.textGray};font-size:12px;}button:first-child{border-color:${({theme})=>theme.colors.primary};background:${({theme})=>theme.colors.primary};color:white;}`;
 const DrawerOverlay=styled.div`position:fixed;inset:0;z-index:30;background:rgba(23,27,21,.4);`;
@@ -31,8 +33,8 @@ const Feedback=styled.div`display:grid;min-height:calc(100vh - 100px);place-item
 function EditableSection({ label, english, value, onSave, onAI, applied }) {
  const [editing,setEditing]=useState(false); const [draft,setDraft]=useState(value);
  const beginEdit=()=>{setDraft(value);setEditing(true);};
- return <Section><h2>{label} <span>{english}</span>{applied&&<AiNote>AI로 다듬기 · 반영 완료</AiNote>}</h2>
-  {!editing&&<HoverActions className="section-actions"><button type="button" onClick={onAI}>AI로 다듬기</button><span>·</span><button type="button" onClick={beginEdit}>직접 수정</button></HoverActions>}
+ return <Section><SectionHeader><h2>{label} <span>{english}</span></h2><SectionTools>{applied&&<AiNote>AI로 다듬기 · 반영 완료</AiNote>}
+  {!editing&&<HoverActions className="section-actions"><button type="button" onClick={onAI}>AI로 다듬기</button><span>·</span><button type="button" onClick={beginEdit}>직접 수정</button></HoverActions>}</SectionTools></SectionHeader>
   {editing?<><EditArea autoFocus value={draft} onChange={e=>setDraft(e.target.value)}/><EditActions><button type="button" onClick={()=>{onSave(draft.trim());setEditing(false);}}>저장</button><button type="button" onClick={()=>setEditing(false)}>취소</button></EditActions></>:<p>{value}</p>}
  </Section>;
 }
