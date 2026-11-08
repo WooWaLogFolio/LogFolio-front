@@ -34,11 +34,15 @@ export function useSignup() {
         replace: true,
       });
     } catch (err) {
-      setError(
-        err.response?.data?.message ??
-          err.response?.data?.detail ??
-          "회원가입에 실패했습니다.",
-      );
+      if (err.response?.status === 409) {
+        setError("이미 가입된 계정입니다. 기존 계정으로 로그인해주세요.");
+      } else {
+        setError(
+          err.response?.data?.message ??
+            err.response?.data?.detail ??
+            "회원가입에 실패했습니다.",
+        );
+      }
     } finally {
       setLoading(false);
     }
