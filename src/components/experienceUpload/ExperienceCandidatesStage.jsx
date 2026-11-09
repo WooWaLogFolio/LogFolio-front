@@ -65,7 +65,7 @@ const ErrorText = styled.p`
   text-align: center;
 `;
 
-export default function ExperienceCandidatesStage({ runId }) {
+export default function ExperienceCandidatesStage({ runId, summaryOverrides = {} }) {
   const navigate = useNavigate();
   const [candidates, setCandidates] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -78,10 +78,17 @@ export default function ExperienceCandidatesStage({ runId }) {
   useEffect(() => {
     if (!runId) return;
     getCandidates(runId)
-      .then(({ data }) => setCandidates(data))
+      // AI 해석 확인 단계에서 거절(EXCLUDED)한 후보는 빼고, 수정한 요약을 반영합니다.
+      .then(({ data }) =>
+        setCandidates(
+          data
+            .filter((c) => c.status === "PENDING")
+            .map((c) => ({ ...c, summary: summaryOverrides[c.id] ?? c.summary })),
+        ),
+      )
       .catch(() => setError("경험 후보를 불러오지 못했어요."))
       .finally(() => setLoading(false));
-  }, [runId]);
+  }, [runId, summaryOverrides]);
 
   const total = candidates.length;
 
@@ -91,7 +98,12 @@ export default function ExperienceCandidatesStage({ runId }) {
     setError("");
 
     try {
-      await decideCandidate(candidates[currentIndex].id, decision);
+      const candidate = candidates[currentIndex];
+      await decideCandidate(candidate.id, decision, {
+        title: candidate.title,
+        summary: candidate.summary,
+        draftContent: candidate.draftContent,
+      });
       if (decision === "CREATE_NEW") setIncludedCount((prev) => prev + 1);
 
       if (currentIndex >= total - 1) {

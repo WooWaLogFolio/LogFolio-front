@@ -1,45 +1,21 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import styled from "styled-components";
 import ReviewCard from "./ReviewCard";
 import SegmentedProgress from "./SegmentedProgress";
+import { NextButton } from "../common/Button";
+import { decideCandidate, getCandidates } from "../../apis/analysisApi";
 
-const CANDIDATES = [
-  {
-    id: 1,
-    summary:
-      '사용자 인터뷰를 통해 "경험을 다시 설명하기 어려운 문제"를 발견하고, 이를 서비스의 핵심 문제로 재정의한 것으로 보여요.',
-    evidence: {
-      badge: "DOCX",
-      fileName: "사용자인터뷰_정리.docx",
-      pageLabel: "P.3",
-      quote:
-        '"10명 중 7명이 활동 경험 기록보다 지원 시점에 경험을 다시 정리하는 과정에서 더 큰 어려움을 느꼈다."',
-    },
-  },
-  {
-    id: 2,
-    summary:
-      '사용자 인터뷰를 통해 "경험을 다시 설명하기 어려운 문제"를 발견하고, 이를 서비스의 핵심 문제로 재정의한 것으로 보여요.',
-    evidence: {
-      badge: "PDF",
-      fileName: "기획서_v3.pdf",
-      pageLabel: "P.1–2",
-      quote:
-        '"MVP 기능 후보 8개 중 핵심 3개 선정. 기준: 사용자 핵심 Pain Point 해결 여부 + 5주 개발 가능성."',
-    },
-  },
-  {
-    id: 3,
-    summary:
-      '사용자 인터뷰를 통해 "경험을 다시 설명하기 어려운 문제"를 발견하고, 이를 서비스의 핵심 문제로 재정의한 것으로 보여요.',
-    evidence: {
-      badge: "PPT",
-      fileName: "공모전_최종발표자료.pptx",
-      pageLabel: "Slide 2",
-      quote: '"기획 담당: 문제정의, 사용자 인터뷰 설계·진행, 기능 우선순위 결정, 발표 기획 전반."',
-    },
-  },
-];
+// 후보 API가 근거 원문(aiClaims)을 응답에 주지 않아서, 이번 분석에 넣은 파일 목록을 근거로 보여줍니다.
+function toEvidences(files) {
+  return files.map((file) => {
+    const extension = file.name.includes(".") ? file.name.split(".").pop() : "";
+    return {
+      key: file.id,
+      badge: extension.toUpperCase(),
+      fileName: file.name,
+    };
+  });
+}
 
 const Wrapper = styled.div`
   width: 100%;
@@ -81,20 +57,53 @@ const CardWrap = styled.div`
   margin-top: 28px;
 `;
 
-export default function AiReviewStage({ onComplete }) {
+const ErrorText = styled.p`
+  margin-top: 16px;
+  color: #e5484d;
+  font-size: 14px;
+  text-align: center;
+`;
+
+const EmptyWrap = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 80px 40px;
+  text-align: center;
+`;
+
+const EmptyButton = styled(NextButton)`
+  width: 240px;
+  margin-top: 32px;
+`;
+
+export default function AiReviewStage({ runId, files = [], onComplete }) {
+  const [candidates, setCandidates] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [editing, setEditing] = useState(false);
   const [draftSummary, setDraftSummary] = useState("");
   const [overrides, setOverrides] = useState({});
 
-  const total = CANDIDATES.length;
-  const candidate = CANDIDATES[currentIndex];
-  const summary = overrides[candidate.id] ?? candidate.summary;
+  useEffect(() => {
+    if (!runId) return;
+    getCandidates(runId)
+      .then(({ data }) => setCandidates(data.filter((c) => c.status === "PENDING")))
+      .catch(() => setError("AI 해석을 불러오지 못했어요. 새로고침 후 다시 시도해주세요."))
+      .finally(() => setLoading(false));
+  }, [runId]);
 
-  const goNext = () => {
+  const total = candidates.length;
+  const candidate = candidates[currentIndex];
+  const summary = candidate ? (overrides[candidate.id] ?? candidate.summary ?? candidate.title) : "";
+
+  // 승인·수정한 요약은 다음 단계(경험 후보)에서 결정과 함께 서버에 저장합니다.
+  const goNext = (nextOverrides = overrides) => {
     setEditing(false);
     if (currentIndex >= total - 1) {
-      onComplete?.();
+      onComplete?.(nextOverrides);
       return;
     }
     setCurrentIndex((prev) => prev + 1);
@@ -106,9 +115,49 @@ export default function AiReviewStage({ onComplete }) {
   };
 
   const handleSaveEdit = () => {
-    setOverrides((prev) => ({ ...prev, [candidate.id]: draftSummary }));
+    const text = draftSummary.trim();
+    if (!text) return;
+    setOverrides((prev) => ({ ...prev, [candidate.id]: text }));
     setEditing(false);
   };
+
+  const handleReject = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    setError("");
+    try {
+      await decideCandidate(candidate.id, "EXCLUDED", {
+        title: candidate.title,
+        summary,
+        draftContent: candidate.draftContent,
+      });
+      const { [candidate.id]: _removed, ...rest } = overrides;
+      setOverrides(rest);
+      goNext(rest);
+    } catch {
+      setError("저장하지 못했어요. 다시 시도해주세요.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return <Description>AI 해석을 불러오는 중이에요...</Description>;
+  }
+
+  if (total === 0) {
+    return (
+      <EmptyWrap>
+        <Heading>{error ? "AI 해석을 불러오지 못했어요" : "확인할 AI 해석이 없어요"}</Heading>
+        <Description>{error || "자료에서 경험 후보를 찾지 못했어요."}</Description>
+        {!error && (
+          <EmptyButton type="button" onClick={() => onComplete?.(overrides)}>
+            다음
+          </EmptyButton>
+        )}
+      </EmptyWrap>
+    );
+  }
 
   return (
     <Wrapper>
@@ -123,20 +172,23 @@ export default function AiReviewStage({ onComplete }) {
       </HeaderRow>
 
       <ProgressWrap>
-        <SegmentedProgress total={total} currentIndex={currentIndex} label="경험 후보 검토 진행률" />
+        <SegmentedProgress total={total} currentIndex={currentIndex} label="AI 해석 검토 진행률" />
       </ProgressWrap>
+
+      {error && <ErrorText>{error}</ErrorText>}
 
       <CardWrap>
         <ReviewCard
           summary={summary}
-          evidence={candidate.evidence}
+          evidences={toEvidences(files)}
           editing={editing}
+          disabled={submitting}
           draftSummary={draftSummary}
           onDraftChange={setDraftSummary}
           onStartEdit={handleStartEdit}
           onSaveEdit={handleSaveEdit}
-          onReject={goNext}
-          onApprove={goNext}
+          onReject={handleReject}
+          onApprove={() => goNext()}
         />
       </CardWrap>
     </Wrapper>

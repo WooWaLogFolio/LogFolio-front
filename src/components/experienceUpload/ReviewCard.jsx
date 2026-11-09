@@ -94,6 +94,12 @@ const EvidenceQuote = styled.p`
   line-height: 22.4px;
 `;
 
+const EmptyEvidence = styled.p`
+  margin-top: 10px;
+  color: ${({ theme }) => theme.colors.textGray};
+  font-size: 14px;
+`;
+
 const ActionRow = styled.div`
   display: flex;
   align-items: center;
@@ -137,8 +143,9 @@ const ApproveButton = styled.button`
 
 export default function ReviewCard({
   summary,
-  evidence,
+  evidences = [],
   editing,
+  disabled = false,
   draftSummary,
   onDraftChange,
   onStartEdit,
@@ -163,31 +170,37 @@ export default function ReviewCard({
 
       <EvidenceSection>
         <SectionLabel>근거 자료</SectionLabel>
-        <EvidenceBox>
-          <EvidenceHeader>
-            <EvidenceBadge>{evidence.badge}</EvidenceBadge>
-            <EvidenceFileName>{evidence.fileName}</EvidenceFileName>
-            <EvidencePage>{evidence.pageLabel}</EvidencePage>
-          </EvidenceHeader>
-          <EvidenceQuote>{evidence.quote}</EvidenceQuote>
-        </EvidenceBox>
+        {evidences.length === 0 ? (
+          <EmptyEvidence>연결된 근거 자료가 없어요.</EmptyEvidence>
+        ) : (
+          evidences.map((evidence) => (
+            <EvidenceBox key={evidence.key ?? evidence.fileName}>
+              <EvidenceHeader>
+                {evidence.badge && <EvidenceBadge>{evidence.badge}</EvidenceBadge>}
+                <EvidenceFileName>{evidence.fileName}</EvidenceFileName>
+                {evidence.pageLabel && <EvidencePage>{evidence.pageLabel}</EvidencePage>}
+              </EvidenceHeader>
+              {evidence.quote && <EvidenceQuote>{evidence.quote}</EvidenceQuote>}
+            </EvidenceBox>
+          ))
+        )}
       </EvidenceSection>
 
       <ActionRow>
-        <RejectLink type="button" onClick={onReject}>
+        <RejectLink type="button" onClick={onReject} disabled={disabled}>
           거절
         </RejectLink>
         <ActionGroup>
           {editing ? (
-            <EditButton type="button" $editing onClick={onSaveEdit}>
+            <EditButton type="button" $editing onClick={onSaveEdit} disabled={disabled}>
               수정 반영
             </EditButton>
           ) : (
-            <EditButton type="button" onClick={onStartEdit}>
+            <EditButton type="button" onClick={onStartEdit} disabled={disabled}>
               수정
             </EditButton>
           )}
-          <ApproveButton type="button" onClick={onApprove}>
+          <ApproveButton type="button" onClick={onApprove} disabled={disabled || editing}>
             승인
           </ApproveButton>
         </ActionGroup>
