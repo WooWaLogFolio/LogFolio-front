@@ -54,6 +54,8 @@ export default function ExperienceUploadPage() {
   const [uploadPhase, setUploadPhase] = useState("form");
   const [projectId, setProjectId] = useState(null);
   const [runId, setRunId] = useState(null);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [summaryOverrides, setSummaryOverrides] = useState({});
   const [error, setError] = useState("");
 
   const handleProjectInfoNext = async (data) => {
@@ -87,13 +89,16 @@ export default function ExperienceUploadPage() {
     setUploadPhase("loading");
 
     try {
-      const fileIds = [];
+      const uploaded = [];
       for (const file of files) {
-        const { data: uploaded } = await uploadProjectFile(projectId, file);
-        fileIds.push(uploaded.id);
+        const { data } = await uploadProjectFile(projectId, file);
+        uploaded.push({ id: data.id, name: file.name });
       }
-      const { data: run } = await startAnalysis(projectId, fileIds);
-      console.log("분석 runId:", run.id);
+      const { data: run } = await startAnalysis(
+        projectId,
+        uploaded.map((file) => file.id),
+      );
+      setUploadedFiles(uploaded);
       setRunId(run.id);
     } catch {
       setUploadPhase("form");
@@ -139,9 +144,18 @@ export default function ExperienceUploadPage() {
           />
         )}
         {currentStep === 3 && (
-          <AiReviewStage onComplete={() => setCurrentStep(4)} />
+          <AiReviewStage
+            runId={runId}
+            files={uploadedFiles}
+            onComplete={(overrides) => {
+              setSummaryOverrides(overrides);
+              setCurrentStep(4);
+            }}
+          />
         )}
-        {currentStep === 4 && <ExperienceCandidatesStage runId={runId} />}
+        {currentStep === 4 && (
+          <ExperienceCandidatesStage runId={runId} summaryOverrides={summaryOverrides} />
+        )}
       </Main>
     </Page>
   );
