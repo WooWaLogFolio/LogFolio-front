@@ -24,3 +24,13 @@ export const deleteExperience = async (experienceId) =>
 
 export const getExperienceEvidence = (experienceId) =>
   axiosInstance.get(`/experiences/${experienceId}/evidence`);
+
+export const getGapQuestions = (experienceId) =>
+  axiosInstance.get(`/experiences/${experienceId}/gap-questions`);
+
+export const answerGapQuestion = async (questionId, answer, answerType) =>
+  axiosInstance.post(
+    `/gap-questions/${questionId}/answers`,
+    { answer, answerType },
+    { headers: await getCsrfHeaders() },
+  );
