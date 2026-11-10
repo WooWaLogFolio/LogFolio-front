@@ -14,6 +14,11 @@ export const updateProject = async (projectId, project) =>
 export const getProject = (projectId) =>
   axiosInstance.get(`/projects/${projectId}`);
 
+export const deleteProject = async (projectId) =>
+  axiosInstance.delete(`/projects/${projectId}`, {
+    headers: await getCsrfHeaders(),
+  });
+
 export const getProjectFiles = (projectId) =>
   axiosInstance.get(`/projects/${projectId}/files`);
 

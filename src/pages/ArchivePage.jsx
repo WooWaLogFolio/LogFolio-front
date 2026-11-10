@@ -12,6 +12,7 @@ import {
   linkQuickLogProject,
   updateQuickLog,
 } from "../apis/archiveApi";
+import { deleteProject } from "../apis/projectApi";
 import clockIcon from "../assets/icons/archive/clock.svg";
 import plusWhiteSmallIcon from "../assets/icons/archive/plus-white-small.svg";
 import plusGrayIcon from "../assets/icons/archive/plus-gray.svg";
@@ -200,21 +201,52 @@ const ProjectGrid = styled.section`
   }
 `;
 
-const ProjectCard = styled.button`
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
+const ProjectCard = styled.article`
+  position: relative;
   min-height: 220px;
-  padding: 20px;
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: 12px;
   background: white;
-  text-align: left;
+  overflow: hidden;
   transition: border-color 0.15s, box-shadow 0.15s;
 
-  &:hover {
+  &:hover,
+  &:focus-within {
     border-color: ${({ theme }) => theme.colors.primary};
     box-shadow: 0 4px 14px rgba(2, 175, 105, 0.08);
+  }
+`;
+
+const ProjectOpenButton = styled.button`
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 220px;
+  padding: 20px;
+  background: white;
+  text-align: left;
+`;
+
+const DeleteProjectButton = styled.button`
+  position: absolute;
+  right: 16px;
+  bottom: 14px;
+  z-index: 1;
+  padding: 5px 8px;
+  border-radius: 6px;
+  color: #d92d20;
+  font-size: 12px;
+  font-weight: 600;
+
+  &:hover,
+  &:focus-visible {
+    background: #fff3f1;
+  }
+
+  &:disabled {
+    cursor: wait;
+    opacity: 0.5;
   }
 `;
 
@@ -273,6 +305,7 @@ const CardBottom = styled.div`
   justify-content: space-between;
   color: ${({ theme }) => theme.colors.textGray};
   font-size: 14px;
+  padding-right: 48px;
 
   img {
     width: 14px;
@@ -445,7 +478,7 @@ const ErrorNotice = styled.p`
 `;
 
 
-function ProjectCards({ projects, filter, onOpenProject, onAddProject }) {
+function ProjectCards({ projects, filter, onOpenProject, onAddProject, onDeleteProject, deletingProjectId }) {
   const visible = filter === "전체"
     ? projects
     : projects.filter((project) => project.status === filter);
@@ -453,22 +486,32 @@ function ProjectCards({ projects, filter, onOpenProject, onAddProject }) {
   return (
     <ProjectGrid aria-label="프로젝트 목록">
       {visible.map((project) => (
-        <ProjectCard key={project.id} type="button" onClick={() => onOpenProject(project.id)}>
-          <div>
-            <CardTitleRow>
-              <CardTitle>{project.title}</CardTitle>
-              <Status $complete={project.status === "저장 완료"}>{project.status}</Status>
-            </CardTitleRow>
-            <ProjectMeta>{project.period}</ProjectMeta>
-            <ProjectMeta>{project.role}</ProjectMeta>
-            <Tags>
-              {project.tags.map((tag) => <Tag key={tag}>{tag}</Tag>)}
-            </Tags>
-          </div>
-          <CardBottom>
-            <span>경험카드 {project.cardCount}개</span>
-            <img src={arrowIcon} alt="" />
-          </CardBottom>
+        <ProjectCard key={project.id}>
+          <ProjectOpenButton type="button" onClick={() => onOpenProject(project.id)}>
+            <div>
+              <CardTitleRow>
+                <CardTitle>{project.title}</CardTitle>
+                <Status $complete={project.status === "저장 완료"}>{project.status}</Status>
+              </CardTitleRow>
+              <ProjectMeta>{project.period}</ProjectMeta>
+              <ProjectMeta>{project.role}</ProjectMeta>
+              <Tags>
+                {project.tags.map((tag) => <Tag key={tag}>{tag}</Tag>)}
+              </Tags>
+            </div>
+            <CardBottom>
+              <span>경험카드 {project.cardCount}개</span>
+              <img src={arrowIcon} alt="" />
+            </CardBottom>
+          </ProjectOpenButton>
+          <DeleteProjectButton
+            type="button"
+            disabled={deletingProjectId === project.id}
+            onClick={() => onDeleteProject(project)}
+            aria-label={`${project.title} 프로젝트 삭제`}
+          >
+            {deletingProjectId === project.id ? "삭제 중" : "삭제"}
+          </DeleteProjectButton>
         </ProjectCard>
       ))}
       {filter === "전체" && (
@@ -493,6 +536,7 @@ export default function ArchivePage() {
   const [loading, setLoading] = useState(true);
   const [recordsLoading, setRecordsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [deletingProjectId, setDeletingProjectId] = useState(null);
 
   const loadArchive = useCallback(async () => {
     try {
@@ -557,6 +601,24 @@ export default function ArchivePage() {
     } catch (requestError) {
       setError(requestError.response?.data?.detail ?? "30초 기록을 삭제하지 못했습니다.");
       return false;
+    }
+  };
+
+  const removeProject = async (project) => {
+    const confirmed = window.confirm(
+      `‘${project.title}’ 프로젝트를 삭제할까요?\n삭제한 프로젝트는 복구할 수 없습니다.`,
+    );
+    if (!confirmed) return;
+
+    setError("");
+    setDeletingProjectId(project.id);
+    try {
+      await deleteProject(project.id);
+      await loadArchive();
+    } catch (requestError) {
+      setError(requestError.response?.data?.detail ?? "프로젝트를 삭제하지 못했습니다.");
+    } finally {
+      setDeletingProjectId(null);
     }
   };
 
@@ -684,6 +746,8 @@ export default function ArchivePage() {
           filter={filter}
           onOpenProject={(id) => navigate(`/archive/${id}`)}
           onAddProject={() => navigate("/experience-upload")}
+          onDeleteProject={removeProject}
+          deletingProjectId={deletingProjectId}
         />
 
         <RecentSection>
