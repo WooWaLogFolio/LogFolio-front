@@ -28,6 +28,14 @@ export const getExperienceEvidence = (experienceId) =>
 export const getGapQuestions = (experienceId) =>
   axiosInstance.get(`/experiences/${experienceId}/gap-questions`);
 
+export const startReviewSession = async (experienceId) =>
+  axiosInstance.post(`/experiences/${experienceId}/review-sessions`, null, {
+    headers: await getCsrfHeaders(),
+  });
+
+export const getReviewSession = (sessionId) =>
+  axiosInstance.get(`/review-sessions/${sessionId}`);
+
 export const answerGapQuestion = async (questionId, answer, answerType) =>
   axiosInstance.post(
     `/gap-questions/${questionId}/answers`,

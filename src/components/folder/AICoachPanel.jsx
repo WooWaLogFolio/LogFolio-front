@@ -1,6 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import styled from "styled-components";
-import { answerGapQuestion, getGapQuestions } from "../../apis/experienceApi";
+import {
+  answerGapQuestion,
+  getGapQuestions,
+  getReviewSession,
+  startReviewSession,
+} from "../../apis/experienceApi";
 import aiDocument from "../../assets/icons/folder/ai-document.svg";
 import checkIcon from "../../assets/icons/folder/check.svg";
 
@@ -25,37 +30,111 @@ const State = styled.div`display:grid;min-height:260px;place-items:center;color:
 const ErrorText = styled.p`margin-top:10px;color:#d92d20;font-size:11px;line-height:18px;`;
 
 const hasAnswer = (question) => (question.answers?.length ?? 0) > 0;
+const POLL_INTERVAL = 2500;
+const POLL_ATTEMPTS = 24;
+const FAILED_SESSION_STATUSES = new Set(["FAILED", "ERROR"]);
+const FINISHED_SESSION_STATUSES = new Set(["COMPLETED", "DONE"]);
+const wait = (milliseconds) => new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 
 export default function AICoachPanel({ experienceId, records = [] }) {
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [emptyMessage, setEmptyMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [picker, setPicker] = useState(false);
   const [selected, setSelected] = useState([]);
   const [input, setInput] = useState("");
+  const requestVersion = useRef(0);
 
-  const loadQuestions = useCallback(async () => {
+  const showQuestions = useCallback((items) => {
+    setQuestions(items);
+    const firstUnanswered = items.findIndex((item) => !hasAnswer(item));
+    setCurrentIndex(firstUnanswered < 0 ? items.length : firstUnanswered);
+    setEmptyMessage("");
+  }, []);
+
+  const prepareQuestions = useCallback(async ({ restart = false } = {}) => {
+    const version = requestVersion.current + 1;
+    const storageKey = `logfolio-review-session:${experienceId}`;
+    requestVersion.current = version;
     setLoading(true);
+    setGenerating(false);
     setError("");
+    setEmptyMessage("");
     try {
-      const { data } = await getGapQuestions(experienceId);
-      const items = Array.isArray(data) ? data : [];
-      setQuestions(items);
-      const firstUnanswered = items.findIndex((item) => !hasAnswer(item));
-      setCurrentIndex(firstUnanswered < 0 ? items.length : firstUnanswered);
+      const questionResponse = await getGapQuestions(experienceId);
+      const existingQuestions = Array.isArray(questionResponse.data) ? questionResponse.data : [];
+      if (requestVersion.current !== version) return;
+      if (existingQuestions.length) {
+        showQuestions(existingQuestions);
+        sessionStorage.removeItem(`logfolio-review-session:${experienceId}`);
+        return;
+      }
+
+      let sessionId = restart ? null : sessionStorage.getItem(storageKey);
+      if (!sessionId) {
+        const { data } = await startReviewSession(experienceId);
+        sessionId = data.id;
+        sessionStorage.setItem(storageKey, sessionId);
+      }
+
+      if (requestVersion.current !== version) return;
+      setGenerating(true);
+
+      for (let attempt = 0; attempt < POLL_ATTEMPTS; attempt += 1) {
+        if (attempt > 0) await wait(POLL_INTERVAL);
+        if (requestVersion.current !== version) return;
+
+        const [sessionResponse, questionsResponse] = await Promise.all([
+          getReviewSession(sessionId),
+          getGapQuestions(experienceId),
+        ]);
+        if (requestVersion.current !== version) return;
+
+        const generatedQuestions = Array.isArray(questionsResponse.data) ? questionsResponse.data : [];
+        if (generatedQuestions.length) {
+          showQuestions(generatedQuestions);
+          sessionStorage.removeItem(storageKey);
+          return;
+        }
+
+        const status = sessionResponse.data?.status;
+        if (FAILED_SESSION_STATUSES.has(status)) {
+          sessionStorage.removeItem(storageKey);
+          throw new Error("AI 질문 생성에 실패했습니다.");
+        }
+        if (FINISHED_SESSION_STATUSES.has(status)) {
+          sessionStorage.removeItem(storageKey);
+          setEmptyMessage("AI 분석이 완료됐지만 생성된 보완 질문이 없습니다.");
+          return;
+        }
+      }
+
+      setEmptyMessage("질문 생성이 지연되고 있습니다. 잠시 후 다시 확인해 주세요.");
     } catch (requestError) {
-      setError(requestError.response?.data?.detail ?? "보완 질문을 불러오지 못했습니다.");
+      if (requestVersion.current !== version) return;
+      if ([404, 410].includes(requestError.response?.status)) {
+        sessionStorage.removeItem(storageKey);
+      }
+      setError(requestError.response?.data?.detail ?? requestError.message ?? "AI 질문을 준비하지 못했습니다.");
     } finally {
-      setLoading(false);
+      if (requestVersion.current === version) {
+        setLoading(false);
+        setGenerating(false);
+      }
     }
-  }, [experienceId]);
+  }, [experienceId, showQuestions]);
 
   useEffect(() => {
     // oxlint-disable-next-line react/set-state-in-effect
-    loadQuestions();
-  }, [loadQuestions]);
+    prepareQuestions();
+    return () => {
+      requestVersion.current += 1;
+    };
+  }, [prepareQuestions]);
 
   const currentQuestion = questions[currentIndex];
   const completed = questions.length > 0 && currentIndex >= questions.length;
@@ -106,12 +185,12 @@ export default function AICoachPanel({ experienceId, records = [] }) {
     <Panel>
       <Header>AI로 경험 다듬기</Header>
       <Body>
-        {loading && <State>확인할 내용을 불러오는 중입니다.</State>}
+        {loading && <State>{generating ? "AI가 보완 질문을 만들고 있습니다." : "확인할 내용을 불러오는 중입니다."}</State>}
         {!loading && error && questions.length === 0 && (
-          <State><div>{error}<button type="button" onClick={loadQuestions}>다시 시도</button></div></State>
+          <State><div>{error}<button type="button" onClick={() => prepareQuestions()}>다시 시도</button><button type="button" onClick={() => prepareQuestions({ restart: true })}>새로 시작</button></div></State>
         )}
-        {!loading && !error && questions.length === 0 && (
-          <State><div>아직 생성된 보완 질문이 없습니다.<button type="button" onClick={loadQuestions}>새로고침</button></div></State>
+        {!loading && !error && questions.length === 0 && emptyMessage && (
+          <State><div>{emptyMessage}<button type="button" onClick={() => prepareQuestions()}>다시 확인</button><button type="button" onClick={() => prepareQuestions({ restart: true })}>새로 생성</button></div></State>
         )}
         {!loading && currentQuestion && (
           <>
