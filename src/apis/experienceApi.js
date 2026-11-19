@@ -36,6 +36,18 @@ export const startReviewSession = async (experienceId) =>
 export const getReviewSession = (sessionId) =>
   axiosInstance.get(`/review-sessions/${sessionId}`);
 
+export const decideReviewItem = async (itemId, decision, confirmedContent) =>
+  axiosInstance.put(
+    `/review-items/${itemId}`,
+    { decision, confirmedContent },
+    { headers: await getCsrfHeaders() },
+  );
+
+export const completeReviewSession = async (sessionId) =>
+  axiosInstance.post(`/review-sessions/${sessionId}/complete`, null, {
+    headers: await getCsrfHeaders(),
+  });
+
 export const answerGapQuestion = async (questionId, answer, answerType) =>
   axiosInstance.post(
     `/gap-questions/${questionId}/answers`,
